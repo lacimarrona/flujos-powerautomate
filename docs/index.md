@@ -22,4 +22,8 @@ features:
     details: Registro, seguimiento y respuesta automática por correo de las solicitudes informáticas radicadas desde la INTRANET.
     link: /solicitudes-informaticas/
     linkText: Ver resumen
+  - title: Alertas de Vencimiento de Extintores
+    details: Avisos automáticos por correo a 30, 15 y 5 días del vencimiento de cada extintor, con un ciclo anual que se reinicia al registrar la renovación.
+    link: /extintores/
+    linkText: Ver resumen
 ---

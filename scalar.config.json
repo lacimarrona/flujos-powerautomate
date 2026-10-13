@@ -47,6 +47,24 @@
                 "filepath": "docs/solicitudes-informaticas/grf-fr-45-solicitudes-informaticas.md"
               }
             }
+          },
+          "/extintores": {
+            "type": "group",
+            "mode": "folder",
+            "title": "Alertas de Vencimiento de Extintores",
+            "open": true,
+            "page": {
+              "type": "page",
+              "title": "Resumen",
+              "filepath": "docs/extintores/index.md"
+            },
+            "children": {
+              "/flujo-alertas-vencimiento": {
+                "type": "page",
+                "title": "Documentación del flujo",
+                "filepath": "docs/extintores/flujo-alertas-vencimiento.md"
+              }
+            }
           }
         }
       }

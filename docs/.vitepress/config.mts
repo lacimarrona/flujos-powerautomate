@@ -13,7 +13,8 @@ export default defineConfig({
     nav: [
       { text: 'Inicio', link: '/' },
       { text: 'Contratos', link: '/contratos/' },
-      { text: 'Solicitudes GRF-FR-45', link: '/solicitudes-informaticas/' }
+      { text: 'Solicitudes GRF-FR-45', link: '/solicitudes-informaticas/' },
+      { text: 'Extintores', link: '/extintores/' }
     ],
 
     sidebar: [
@@ -31,6 +32,14 @@ export default defineConfig({
         items: [
           { text: 'Resumen', link: '/solicitudes-informaticas/' },
           { text: 'Documentación del proceso', link: '/solicitudes-informaticas/grf-fr-45-solicitudes-informaticas' }
+        ]
+      },
+      {
+        text: 'Alertas de Vencimiento de Extintores',
+        collapsed: false,
+        items: [
+          { text: 'Resumen', link: '/extintores/' },
+          { text: 'Documentación del flujo', link: '/extintores/flujo-alertas-vencimiento' }
         ]
       }
     ],
