@@ -27,4 +27,4 @@ Sistema que automatiza el control de los contratos laborales a término fijo, qu
 - No se pierden ni se repiten avisos: un solo correo diario y un correo de error si algo falla.
 - Sin costo adicional: usa la licencia de Microsoft 365 que ya tiene la entidad.
 
-👉 Consulte la [documentación completa del sistema](./documentacion-sistema.md).
+👉 Consulte la [documentación completa del sistema](./documentacion-sistema.md) y el [plan de mejoras](./plan-mejoras.md), que propone las siguientes fases: un Excel más claro, tarjetas interactivas en Teams y un formulario de ingreso de colaboradores.

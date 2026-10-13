@@ -23,7 +23,8 @@ export default defineConfig({
         collapsed: false,
         items: [
           { text: 'Resumen', link: '/contratos/' },
-          { text: 'Documentación del sistema', link: '/contratos/documentacion-sistema' }
+          { text: 'Documentación del sistema', link: '/contratos/documentacion-sistema' },
+          { text: 'Plan de mejoras', link: '/contratos/plan-mejoras' }
         ]
       },
       {

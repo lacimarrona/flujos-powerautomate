@@ -27,6 +27,11 @@
                 "type": "page",
                 "title": "Documentación del sistema",
                 "filepath": "docs/contratos/documentacion-sistema.md"
+              },
+              "/plan-mejoras": {
+                "type": "page",
+                "title": "Plan de mejoras",
+                "filepath": "docs/contratos/plan-mejoras.md"
               }
             }
           },

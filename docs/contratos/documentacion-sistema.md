@@ -160,4 +160,4 @@ Ejemplo: un colaborador cuyo contrato termina el **30/11/2026**.
 **Para el administrador técnico**
 - El flujo y los scripts están ligados a **la cuenta institucional del área de Sistemas** (consultar cuál en la documentación interna). Se recomienda agregar un copropietario.
 - Si se modifica un script, hay que **volver a seleccionarlo** en la acción *Ejecutar script* del flujo y guardar. Si no, Power Automate puede seguir usando la versión anterior.
-- Documentación técnica detallada: guía paso a paso y guía de cartas (documentos internos, no incluidos en este sitio). Próximas mejoras propuestas: plan de mejoras (documento interno).
+- Documentación técnica detallada: guía paso a paso y guía de cartas (documentos internos, no incluidos en este sitio). Próximas mejoras propuestas: [Plan de mejoras](./plan-mejoras.md).
