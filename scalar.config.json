@@ -1,0 +1,55 @@
+{
+  "$schema": "https://cdn.scalar.com/schema/scalar-config-next.json",
+  "scalar": "2.0.0",
+  "info": {
+    "title": "Documentación de Proyectos",
+    "description": "Documentación de los proyectos de automatización con Microsoft 365"
+  },
+  "assetsDir": "docs/assets",
+  "navigation": {
+    "routes": {
+      "/": {
+        "type": "group",
+        "title": "Proyectos",
+        "children": {
+          "/contratos": {
+            "type": "group",
+            "mode": "folder",
+            "title": "Renovaciones y Terminaciones de Contratos",
+            "open": true,
+            "page": {
+              "type": "page",
+              "title": "Resumen",
+              "filepath": "docs/contratos/index.md"
+            },
+            "children": {
+              "/documentacion-sistema": {
+                "type": "page",
+                "title": "Documentación del sistema",
+                "filepath": "docs/contratos/documentacion-sistema.md"
+              }
+            }
+          },
+          "/solicitudes-informaticas": {
+            "type": "group",
+            "mode": "folder",
+            "title": "Solicitudes Informáticas (GRF-FR-45)",
+            "open": true,
+            "page": {
+              "type": "page",
+              "title": "Resumen",
+              "filepath": "docs/solicitudes-informaticas/index.md"
+            },
+            "children": {
+              "/grf-fr-45": {
+                "type": "page",
+                "title": "Documentación del proceso",
+                "filepath": "docs/solicitudes-informaticas/grf-fr-45-solicitudes-informaticas.md"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
