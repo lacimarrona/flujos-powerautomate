@@ -3,7 +3,7 @@ import { defineConfig } from 'vitepress'
 export default defineConfig({
   lang: 'es-CO',
   title: 'Documentación de Proyectos',
-  description: 'Documentación de los proyectos de automatización con Microsoft 365',
+  description: 'Documentación de los proyectos de automatización con Microsoft 365 y de las aplicaciones propias',
   // GitHub Pages publica el sitio en https://lacimarrona.github.io/flujos-powerautomate/
   base: '/flujos-powerautomate/',
   cleanUrls: true,
@@ -14,7 +14,8 @@ export default defineConfig({
       { text: 'Inicio', link: '/' },
       { text: 'Contratos', link: '/contratos/' },
       { text: 'Solicitudes GRF-FR-45', link: '/solicitudes-informaticas/' },
-      { text: 'Extintores', link: '/extintores/' }
+      { text: 'Extintores', link: '/extintores/' },
+      { text: 'TechCheck', link: '/techcheck/' }
     ],
 
     sidebar: [
@@ -41,6 +42,14 @@ export default defineConfig({
         items: [
           { text: 'Resumen', link: '/extintores/' },
           { text: 'Documentación del flujo', link: '/extintores/flujo-alertas-vencimiento' }
+        ]
+      },
+      {
+        text: 'TechCheck',
+        collapsed: false,
+        items: [
+          { text: 'Resumen', link: '/techcheck/' },
+          { text: 'Documentación de la app', link: '/techcheck/documentacion' }
         ]
       }
     ],

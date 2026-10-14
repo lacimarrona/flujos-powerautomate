@@ -9,6 +9,7 @@ Documentación de los proyectos de automatización con Microsoft 365 (Power Auto
 | Renovaciones y Terminaciones de Contratos | [docs/contratos/index.md](docs/contratos/index.md) | [documentacion-sistema.md](docs/contratos/documentacion-sistema.md) · [plan-mejoras.md](docs/contratos/plan-mejoras.md) |
 | Solicitudes Informáticas (GRF-FR-45) | [docs/solicitudes-informaticas/index.md](docs/solicitudes-informaticas/index.md) | [grf-fr-45-solicitudes-informaticas.md](docs/solicitudes-informaticas/grf-fr-45-solicitudes-informaticas.md) |
 | Alertas de Vencimiento de Extintores | [docs/extintores/index.md](docs/extintores/index.md) | [flujo-alertas-vencimiento.md](docs/extintores/flujo-alertas-vencimiento.md) |
+| TechCheck (app de checklists) | [docs/techcheck/index.md](docs/techcheck/index.md) | [documentacion.md](docs/techcheck/documentacion.md) |
 
 ## Sitio publicado (GitHub Pages)
 

@@ -3,8 +3,8 @@ layout: home
 
 hero:
   name: Documentación de Proyectos
-  text: Automatizaciones con Microsoft 365
-  tagline: Excel en SharePoint, Office Scripts, Power Automate, Microsoft Forms y Outlook
+  text: Automatizaciones y aplicaciones
+  tagline: Flujos con Microsoft 365 (Power Automate, Office Scripts, Forms) y aplicaciones propias como TechCheck
   actions:
     - theme: brand
       text: Contratos
@@ -25,5 +25,9 @@ features:
   - title: Alertas de Vencimiento de Extintores
     details: Avisos automáticos por correo a 30, 15 y 5 días del vencimiento de cada extintor, con un ciclo anual que se reinicia al registrar la renovación.
     link: /extintores/
+    linkText: Ver resumen
+  - title: TechCheck
+    details: App propia de checklists de mantenimiento con evidencia fotográfica, tareas programadas y trabajo sin conexión, para PC, tablet y celular.
+    link: /techcheck/
     linkText: Ver resumen
 ---

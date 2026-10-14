@@ -70,6 +70,24 @@
                 "filepath": "docs/extintores/flujo-alertas-vencimiento.md"
               }
             }
+          },
+          "/techcheck": {
+            "type": "group",
+            "mode": "folder",
+            "title": "TechCheck",
+            "open": true,
+            "page": {
+              "type": "page",
+              "title": "Resumen",
+              "filepath": "docs/techcheck/index.md"
+            },
+            "children": {
+              "/documentacion": {
+                "type": "page",
+                "title": "Documentación de la app",
+                "filepath": "docs/techcheck/documentacion.md"
+              }
+            }
           }
         }
       }
