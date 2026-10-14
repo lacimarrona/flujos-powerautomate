@@ -30,4 +30,8 @@ features:
     details: App propia de checklists de mantenimiento con evidencia fotográfica, tareas programadas y trabajo sin conexión, para PC, tablet y celular.
     link: /techcheck/
     linkText: Ver resumen
+  - title: PermisosScan
+    details: Auditoría de permisos de las carpetas de red, con cruce de grupos de Active Directory, más el Estructurador NAS para registrar el mapa organizacional.
+    link: /permisosscan/
+    linkText: Ver resumen
 ---

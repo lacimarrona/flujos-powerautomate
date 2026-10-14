@@ -10,6 +10,7 @@ Documentación de los proyectos de automatización con Microsoft 365 (Power Auto
 | Solicitudes Informáticas (GRF-FR-45) | [docs/solicitudes-informaticas/index.md](docs/solicitudes-informaticas/index.md) | [grf-fr-45-solicitudes-informaticas.md](docs/solicitudes-informaticas/grf-fr-45-solicitudes-informaticas.md) |
 | Alertas de Vencimiento de Extintores | [docs/extintores/index.md](docs/extintores/index.md) | [flujo-alertas-vencimiento.md](docs/extintores/flujo-alertas-vencimiento.md) |
 | TechCheck (app de checklists) | [docs/techcheck/index.md](docs/techcheck/index.md) | [documentacion.md](docs/techcheck/documentacion.md) |
+| PermisosScan (auditoría de permisos + Estructurador NAS) | [docs/permisosscan/index.md](docs/permisosscan/index.md) | [documentacion.md](docs/permisosscan/documentacion.md) · [arquitectura.md](docs/permisosscan/arquitectura.md) · [estructurador-nas.md](docs/permisosscan/estructurador-nas.md) |
 
 ## Sitio publicado (GitHub Pages)
 

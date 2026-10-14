@@ -15,7 +15,8 @@ export default defineConfig({
       { text: 'Contratos', link: '/contratos/' },
       { text: 'Solicitudes GRF-FR-45', link: '/solicitudes-informaticas/' },
       { text: 'Extintores', link: '/extintores/' },
-      { text: 'TechCheck', link: '/techcheck/' }
+      { text: 'TechCheck', link: '/techcheck/' },
+      { text: 'PermisosScan', link: '/permisosscan/' }
     ],
 
     sidebar: [
@@ -50,6 +51,16 @@ export default defineConfig({
         items: [
           { text: 'Resumen', link: '/techcheck/' },
           { text: 'Documentación de la app', link: '/techcheck/documentacion' }
+        ]
+      },
+      {
+        text: 'PermisosScan',
+        collapsed: false,
+        items: [
+          { text: 'Resumen', link: '/permisosscan/' },
+          { text: 'Documentación técnica y manual', link: '/permisosscan/documentacion' },
+          { text: 'Arquitectura actual', link: '/permisosscan/arquitectura' },
+          { text: 'Estructurador NAS', link: '/permisosscan/estructurador-nas' }
         ]
       }
     ],

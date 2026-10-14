@@ -88,6 +88,34 @@
                 "filepath": "docs/techcheck/documentacion.md"
               }
             }
+          },
+          "/permisosscan": {
+            "type": "group",
+            "mode": "folder",
+            "title": "PermisosScan",
+            "open": true,
+            "page": {
+              "type": "page",
+              "title": "Resumen",
+              "filepath": "docs/permisosscan/index.md"
+            },
+            "children": {
+              "/documentacion": {
+                "type": "page",
+                "title": "Documentación técnica y manual",
+                "filepath": "docs/permisosscan/documentacion.md"
+              },
+              "/arquitectura": {
+                "type": "page",
+                "title": "Arquitectura actual",
+                "filepath": "docs/permisosscan/arquitectura.md"
+              },
+              "/estructurador-nas": {
+                "type": "page",
+                "title": "Estructurador NAS",
+                "filepath": "docs/permisosscan/estructurador-nas.md"
+              }
+            }
           }
         }
       }
