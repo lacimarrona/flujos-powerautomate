@@ -87,7 +87,7 @@ permisos-scan/                     <- Carpeta raíz del proyecto
 |-- PermisosScan.exe               <- Ejecutable final (generado, no se edita, ignorado por git)
 |-- README.md                      <- Que es la app, por que existe y para que sirve
 |-- GUIA_DE_USO.md                 <- Guia de uso y operacion para el equipo de Sistemas
-|-- ARQUITECTURA_ACTUAL.md         <- Resumen tecnico de la arquitectura y deuda tecnica
+|-- ARQUITECTURA_ACTUAL.md         <- Resumen tecnico de la arquitectura
 |-- CONTEXTO_ESTRUCTURADOR_NAS_v2.md <- Referencia del modulo Estructurador NAS
 |
 |-- Permisos_Scan/                 <- CREADO EN RUNTIME: escaneos guardados (ignorado por git)

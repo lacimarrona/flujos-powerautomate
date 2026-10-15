@@ -111,6 +111,6 @@ Estos archivos se generan o cambian con el uso, así que están en `.gitignore`:
 ## Documentación
 
 - [Documentación técnica y manual de usuario](./documentacion.md): funcionamiento completo, API, motor de escaneo, seguridad y manual paso a paso.
-- [Arquitectura actual](./arquitectura.md): resumen técnico, puntos de extensión y deuda técnica conocida.
+- [Arquitectura actual](./arquitectura.md): resumen técnico, estructura del código, convenciones y puntos de extensión.
 - [Estructurador NAS](./estructurador-nas.md): modelo de datos, reglas y endpoints del Estructurador NAS.
 - La **guía de uso y operación** (`GUIA_DE_USO.md`) está en el repositorio del proyecto.
