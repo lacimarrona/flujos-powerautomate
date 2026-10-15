@@ -1,0 +1,16 @@
+/* Con el menú lateral visible, el título "Documentación de Proyectos" no cabe
+   en el ancho de la columna a 16px y se sale de ella. */
+@media (min-width: 960px) {
+  .VPNavBarTitle .title {
+    font-size: 14px;
+  }
+}
+
+/* Los enlaces del menú superior no caben por debajo de ~1200px y empujan fuera
+   el interruptor de modo oscuro. Ahí se ocultan: el menú lateral ya lleva a
+   todos los proyectos (y en celular sigue el menú de hamburguesa). */
+@media (min-width: 768px) and (max-width: 1199px) {
+  .VPNavBarMenu {
+    display: none !important;
+  }
+}
