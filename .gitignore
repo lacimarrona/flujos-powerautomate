@@ -4,3 +4,6 @@ docs/.vitepress/dist/
 docs/.vitepress/cache/
 .DS_Store
 Thumbs.db
+
+# Originales con datos sensibles: nunca se suben
+_privado/

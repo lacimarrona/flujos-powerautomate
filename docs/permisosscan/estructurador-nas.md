@@ -1,6 +1,6 @@
 # Estructurador NAS — Documentación del estado actual
 
-> Este documento describe el módulo **tal como está implementado hoy** en la rama `feature/estructurador-nas`. Ya no es un brief de planificación: es la referencia viva del módulo. Actualízalo cada vez que se agregue o cambie algo relevante.
+> Este documento describe el módulo **tal como está implementado hoy** en la rama `feature/estructurador-nas` (publicada en `origin`, pendiente de merge a `main`). Ya no es un brief de planificación: es la referencia viva del módulo. Actualízalo cada vez que se agregue o cambie algo relevante.
 >
 > Para la arquitectura general de PermisosScan (fuera del Estructurador), ver [Arquitectura actual](./arquitectura.md).
 
@@ -27,7 +27,7 @@
 **Backend (`server/`):**
 - Módulo aislado en `server/estructurador.js`, registrado en `server/index.js` con `registerEstructuradorRoutes(app, authMiddleware)`.
 - Persistencia en `config/estructurador.json` (archivo propio, nunca comparte datos con `Permisos_Scan/*.json`).
-- IDs con `uuid` v4 (JS puro, compatible con `pkg`).
+- IDs con `uuid` v4 (paquete `uuid ^11`, JS puro, compatible con `pkg`).
 - Escrituras serializadas con una cadena de promesas (`writeChain`) para evitar corrupción por escrituras concurrentes.
 
 **Empaquetado:** mismo `pkg` / `PermisosScan.exe` que el resto de la app. Sin dependencias nuevas con bindings nativos.
@@ -99,8 +99,9 @@ Dentro de una Unidad activa:
 Los `codigo` son legibles y con padding a 3 dígitos (`001`, `002`, ...), pero **el contador correcto depende de qué se está numerando**, no es un único contador global:
 
 - **Nivel 1 / 2 / 3 / Subproceso**: cada **Unidad** tiene sus propios 4 contadores (`contadorNivel1/2/3/Subprocesos`), independientes de las demás unidades. Dos unidades distintas pueden tener ambas un `001_Financiera` sin chocar.
-- Dentro de un mismo nivel, Área y Proceso-suelto (Nivel 1) **comparten** el contador — se numeran en el orden real en que se crean, entrelazados. Lo mismo aplica a Cargo/Proceso-de-área (Nivel 2).
-- **Cargo**: como no pertenece a una Unidad específica (se comparte por tipo), tiene su propio contador **por tipo** (`contadorCargosNAS`, `contadorCargosOneDrive`) a nivel global del archivo, no por unidad.
+- En Nivel 1, Área y Proceso suelto **comparten** `contadorNivel1`: se numeran en el orden real en que se crean, entrelazados. Los Procesos de área (Nivel 2) usan `contadorNivel2`, los de cargo (Nivel 3) `contadorNivel3` y los subprocesos `contadorSubprocesos`.
+- **Unidad**: contador global `contadorUnidades` en la raíz del archivo.
+- **Cargo**: como no pertenece a una Unidad específica (se comparte por tipo), tiene su propio contador **por tipo** (`contadorCargosNAS`, `contadorCargosOneDrive`) a nivel global del archivo, no por unidad. Por eso un Cargo y un Proceso de la misma columna de Nivel 2 **no** comparten numeración.
 - **Miembro** no tiene `codigo` (nunca lo tuvo).
 
 ### Migración de datos antiguos
@@ -111,7 +112,7 @@ Los `codigo` son legibles y con padding a 3 dígitos (`001`, `002`, ...), pero *
 
 ## Almacenamiento
 
-- Archivo: `config/estructurador.json`. Nunca se lee ni se escribe en `Permisos_Scan/*.json`.
+- Archivo: `config/estructurador.json`. Nunca se lee ni se escribe en `Permisos_Scan/*.json`. Está en `.gitignore` (son datos del entorno, no código); si no existe, el servidor lo crea vacío al arrancar.
 - **`config/ad-groups.json`** se **lee** (solo lectura) para dos cosas puntuales: nada relacionado con el árbol organizacional en sí, sino exclusivamente para poblar la importación de Miembros desde AD (ver más abajo). El Estructurador nunca escribe ese archivo — sigue siendo terreno exclusivo del lector de permisos / login.
 - Escrituras serializadas con una cadena de promesas (`persist()` encola sobre `writeChain`).
 
@@ -120,6 +121,11 @@ Los `codigo` son legibles y con padding a 3 dígitos (`001`, `002`, ...), pero *
 ## Backend — endpoints (`server/estructurador.js`)
 
 Todos bajo `/api/estructurador/`, protegidos por `authMiddleware`.
+
+### Carga completa
+| Método | Ruta | Descripción |
+|---|---|---|
+| GET | `/todo` | Devuelve el archivo completo (las 5 colecciones + contadores). Es lo que usa `loadAll()` del frontend al abrir el módulo |
 
 ### Unidades
 | Método | Ruta | Descripción |
@@ -254,13 +260,13 @@ Barra fija sobre las columnas. Filtra en vivo por nombre/código en Área, Cargo
 
 ## Restricciones críticas (siguen vigentes)
 
-1. No modificar la lógica del lector de permisos (`server/index.js` solo gana el registro del módulo).
+1. No modificar la lógica del lector de permisos (`server/index.js` solo gana el registro del módulo). Excepción hecha en octubre 2026: correcciones de seguridad (credenciales por equipo, inyección en PowerShell, login obligatorio para datos de AD), que no cambian lo que hace el escaneo.
 2. El Estructurador usa su propio archivo JSON; solo **lee** (nunca escribe) `config/ad-groups.json`, exclusivamente para la importación de Miembros desde AD.
 3. Sin dependencias con bindings nativos (compatibilidad con `pkg`).
 4. Dominio en español en variables, endpoints y UI.
 5. Tema visual: Tailwind + dark theme + emerald, sin librerías de componentes.
 6. Sin infraestructura de testing (el proyecto no la tiene).
-7. Todo el trabajo en la rama `feature/estructurador-nas`, sin merge a `main` ni push a remoto salvo instrucción explícita del usuario.
+7. Todo el trabajo en la rama `feature/estructurador-nas`. La rama ya está publicada en `origin`; el merge a `main` se hace por PR y solo con aprobación del usuario.
 
 ---
 
@@ -284,6 +290,7 @@ Barra fija sobre las columnas. Filtra en vivo por nombre/código en Área, Cargo
 6. **Iteración post-lanzamiento** (en producción de facto, probado en navegador): fix de selección de cards (trackBy), elección Área/Proceso en Nivel 1, subprocesos (un nivel de anidamiento), procesos directos de un área sin cargo dueño, numeración por contador compartido por columna visual, líneas conectoras entre niveles, botón global Cargo/Miembro (reemplazando la sección de Miembros de Nivel 3).
 7. **Unidades:** entidad `Unidad` (tipo NAS/OneDrive), `Area`/`Proceso` scoped a una unidad, `Cargo` convertido a relación muchos-a-muchos con Área (`areaIds`) para permitir compartir Cargos/Miembros entre unidades del mismo tipo sin romper la navegación de 3 niveles existente. Migración automática de datos previos a una "Unidad Principal".
 8. **Dueño de Cargo + importación desde AD:** campo `Cargo.duenoId` (debe ser un miembro ya asociado al cargo), y flujo de importación de personas reales desde el directorio AD ya sincronizado como Miembros (con buscador y deduplicación por `sam`).
+9. **Publicación (octubre 2026):** rama subida a `origin`; se sacaron del repositorio el build de Angular (`client/dist`), la caché de Angular, los escaneos (`Permisos_Scan/*.json`) y `config/estructurador.json`. Prueba de humo de la API: 32 de 32 verificaciones correctas (CRUD completo, validaciones, integridad referencial y limpieza en cascada). La interfaz no se ha recorrido en un navegador después de estos cambios.
 
 ---
 

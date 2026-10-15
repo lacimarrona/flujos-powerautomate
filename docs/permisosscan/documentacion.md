@@ -1,7 +1,9 @@
 # PermisosScan v2.0 — Documentación Técnica y Manual de Usuario
 
-> Herramienta de auditoría de permisos NTFS en carpetas de red Windows.
+> Herramienta de auditoría de permisos NTFS en carpetas de red Windows, con un módulo adicional (**Estructurador NAS**) para registrar la estructura organizacional de la empresa.
 > Stack: **Node.js 18 + Express** · **Angular 17** · **PowerShell** · Empaquetado con **pkg**
+>
+> Para una introducción corta (qué es, por qué existe y para qué sirve), ver el [resumen](./index.md). El detalle del Estructurador NAS está en [Estructurador NAS](./estructurador-nas.md).
 
 ---
 
@@ -15,11 +17,13 @@ PermisosScan es una aplicación web local que corre en Windows. Su función es a
 
 La aplicación se distribuye como un único archivo ejecutable (`PermisosScan.exe`) que no requiere instalación de ningún tipo en el equipo destino. Al ejecutarse, arranca un servidor web local en el puerto 7890 y abre el navegador automáticamente.
 
+Además del lector de permisos, la aplicación incluye el **Estructurador NAS** (ruta `/estructurador`): un registro interno del mapa organizacional (Unidades → Áreas → Cargos → Procesos → Miembros). Comparte login, servidor y empaquetado con el lector de permisos, pero sus datos y su lógica son independientes (ver sección 4.8).
+
 ### Decisiones de diseño importantes
 
 Entender estas decisiones ayuda a mantener y extender el proyecto correctamente:
 
-**Un solo archivo de backend (`server/index.js`):** Todo el servidor está en un único archivo. Esto es intencional para simplificar el empaquetado con `pkg`. Separar en módulos requeriría ajustar la configuración del bundler.
+**Backend concentrado en pocos archivos:** El lector de permisos vive en un único archivo (`server/index.js`) para simplificar el empaquetado con `pkg`. El Estructurador NAS se agregó como un módulo aparte (`server/estructurador.js`) que `index.js` registra con `registerEstructuradorRoutes(app, authMiddleware)`; `pkg` lo incluye solo porque sigue los `require()`.
 
 **Frontend servido por Express:** No hay un servidor de frontend separado en producción. Express sirve los archivos estáticos de Angular y la API REST en el mismo proceso y puerto. En desarrollo, Angular CLI corre en el 4200 y usa un proxy para redirigir `/api/*` al 7890.
 
@@ -45,7 +49,7 @@ Valida autenticación JWT, orquesta las operaciones y gestiona el sistema de arc
 Scripts generados dinámicamente por Node.js y ejecutados con `child_process.spawn()`. El resultado se emite como JSON a `stdout` y Node.js lo parsea. PowerShell tiene acceso nativo a las APIs de Windows necesarias para leer permisos NTFS y consultar Active Directory.
 
 **Capa de persistencia (Sistema de archivos):**
-Los escaneos se guardan como archivos JSON en la carpeta `Permisos_Scan/`. El caché de grupos AD se guarda en `config/ad-groups.json`. No hay base de datos.
+Los escaneos se guardan como archivos JSON en la carpeta `Permisos_Scan/`. El caché de grupos AD se guarda en `config/ad-groups.json` y los datos del Estructurador NAS en `config/estructurador.json`. No hay base de datos.
 
 ### Comunicación entre capas
 
@@ -80,18 +84,24 @@ permisos-scan/                     <- Carpeta raíz del proyecto
 |-- ABRIR.bat                      <- Lanzador para distribucion (usa el .exe)
 |-- EJECUTAR.bat                   <- Lanzador para desarrollo (usa node directamente)
 |-- CONSTRUIR_EXE.bat              <- Script para generar el ejecutable portable
-|-- PermisosScan.exe               <- Ejecutable final (generado, no se edita)
+|-- PermisosScan.exe               <- Ejecutable final (generado, no se edita, ignorado por git)
+|-- README.md                      <- Que es la app, por que existe y para que sirve
+|-- GUIA_DE_USO.md                 <- Guia de uso y operacion para el equipo de Sistemas
+|-- ARQUITECTURA_ACTUAL.md         <- Resumen tecnico de la arquitectura y deuda tecnica
+|-- CONTEXTO_ESTRUCTURADOR_NAS_v2.md <- Referencia del modulo Estructurador NAS
 |
-|-- Permisos_Scan/                 <- CREADO EN RUNTIME: escaneos guardados
+|-- Permisos_Scan/                 <- CREADO EN RUNTIME: escaneos guardados (ignorado por git)
 |   |-- Z_prof4_todos_2026-05-04_admin.json
 |   |-- Z_prof4_usr-jperez_2026-05-04_admin.json
 |   `-- ...
 |
 |-- config/                        <- CREADO EN RUNTIME: configuracion persistente
-|   `-- ad-groups.json             <- Cache de grupos/usuarios de Active Directory
+|   |-- ad-groups.json             <- Cache de grupos/usuarios de Active Directory
+|   `-- estructurador.json         <- Datos del Estructurador NAS (ignorado por git)
 |
 |-- server/                        <- TODO EL BACKEND AQUI
-|   |-- index.js                   <- Punto de entrada unico del servidor
+|   |-- index.js                   <- Punto de entrada del servidor y lector de permisos
+|   |-- estructurador.js           <- Modulo Estructurador NAS (rutas /api/estructurador/*)
 |   |-- ad-groups.js               <- Fallback estatico de grupos AD (sin LDAP)
 |   |-- package.json               <- Dependencias y config de pkg
 |   `-- server.log                 <- Log de ejecucion (generado en runtime)
@@ -102,7 +112,7 @@ permisos-scan/                     <- Carpeta raíz del proyecto
 |   |-- tsconfig.json              <- Config de TypeScript
 |   |-- proxy.conf.json            <- Proxy dev: /api -> localhost:7890
 |   |-- package.json               <- Dependencias de Angular
-|   |-- dist/                      <- BUILD COMPILADO (incluido en el .exe)
+|   |-- dist/                      <- BUILD COMPILADO (incluido en el .exe, ignorado por git)
 |   `-- src/
 |       |-- index.html             <- Punto de entrada HTML
 |       |-- main.ts                <- Bootstrap de Angular
@@ -140,8 +150,13 @@ permisos-scan/                     <- Carpeta raíz del proyecto
 |           |   |   |-- results.component.html
 |           |   |   `-- folder-tree/             <- Arbol recursivo de carpetas
 |           |   |       `-- folder-tree.component.ts
-|           |   `-- viewer/
-|           |       `-- viewer.component.ts      <- Visor publico (sin login)
+|           |   |-- viewer/
+|           |   |   `-- viewer.component.ts      <- Visor publico (sin login)
+|           |   `-- estructurador/               <- Modulo Estructurador NAS (ver seccion 4.8)
+|           |       |-- estructurador.component.ts / .html
+|           |       |-- services/estructurador.service.ts
+|           |       |-- models/estructurador.models.ts
+|           |       `-- components/              <- Cards, modales y barra de busqueda
 |           |
 |           `-- shared/            <- Componentes reutilizables
 |               |-- perm-badge/
@@ -159,7 +174,7 @@ permisos-scan/                     <- Carpeta raíz del proyecto
 
 ## 4. Backend — Servidor Node.js
 
-Todo el backend está concentrado en `server/index.js`. Es un archivo de aproximadamente 400 líneas que contiene: configuración, middlewares, todos los endpoints REST, el motor de escaneo PowerShell, la integración LDAP y la función auxiliar de inicio.
+El backend del lector de permisos está concentrado en `server/index.js` (unas 500 líneas): configuración, middlewares, los endpoints REST, el motor de escaneo PowerShell, la integración LDAP y la función auxiliar de inicio. El Estructurador NAS vive aparte en `server/estructurador.js` (sección 4.8).
 
 ### Dependencias del servidor
 
@@ -168,26 +183,40 @@ Todo el backend está concentrado en `server/index.js`. Es un archivo de aproxim
   "dependencies": {
     "cors": "^2.8.5",
     "express": "^4.18.2",
-    "jsonwebtoken": "^9.0.2"
+    "jsonwebtoken": "^9.0.2",
+    "uuid": "^11.0.5"
   }
 }
 ```
 
-Solo tres dependencias externas. Node.js nativo (`fs`, `path`, `child_process`) hace el resto.
+Solo cuatro dependencias externas (`uuid` la usa el Estructurador para generar IDs). Node.js nativo (`fs`, `path`, `child_process`) hace el resto.
 
 ### 4.1 Configuración y Variables de Entorno
 
-```javascript
-const PORT = 7890;
-const JWT_SECRET = '…';                              // clave para firmar las sesiones
+El código **no contiene credenciales ni secretos**. Cada equipo configura los suyos:
 
-const USUARIO = process.env.APP_USER || '…';
-const PASSWORD = process.env.APP_PASS || '…';
+| Qué | Dónde se configura | Si no se configura |
+|---|---|---|
+| Usuario y contraseña de administrador | El **asistente de primer uso** (pantalla "Configurar administrador"), que crea `config/credenciales.json`. Alternativa: variables de entorno `APP_USER` y `APP_PASS` | El login responde 503 y la app ofrece el asistente, solo desde el propio equipo |
+| Secreto de las sesiones (JWT) | Variable de entorno `APP_JWT_SECRET` (opcional) | Se genera uno aleatorio en cada arranque |
+| Carpeta de escaneos | Variable de entorno `SCAN_DIR` (opcional) | `Permisos_Scan/` junto al `.exe` o a la raíz del proyecto |
+
+**`config/credenciales.json`** (en `.gitignore`; nunca se sube al repositorio) guarda la contraseña como hash `scrypt` con sal aleatoria, nunca en texto plano:
+
+```json
+{ "usuario": "nombre-de-usuario", "salt": "…", "hash": "…" }
 ```
 
-Las credenciales se configuran con las **variables de entorno** `APP_USER` y `APP_PASS`. Cada instalación debe definir las suyas; no se deben usar los valores por defecto.
+- Lo escribe la propia app: al crear el administrador (`POST /api/setup`) y al cambiar la contraseña (`POST /api/cambiar-password`). No hace falta editarlo a mano.
+- Si al arrancar encuentra un archivo antiguo con `{ "usuario", "password" }` en texto plano, lo convierte a hash automáticamente.
+- **Olvido de contraseña:** detener la app, borrar el archivo y volver a abrirla en ese equipo; reaparece el asistente. No se pierden escaneos ni datos del Estructurador.
+- Si existen las variables `APP_USER` y `APP_PASS`, tienen prioridad sobre el archivo, y la contraseña ya no se puede cambiar desde la app.
 
-El `JWT_SECRET` se usa para firmar y verificar los tokens de sesión, así que debe ser un valor largo, aleatorio y propio de cada instalación.
+**Por qué el asistente solo funciona desde el propio equipo:** mientras no exista administrador, quien lo cree se queda con la cuenta. El servidor solo acepta `/api/setup` si la conexión viene de `127.0.0.1`/`::1`; mira la dirección real del socket, no cabeceras que se puedan falsificar. Desde otro equipo responde 403, y la pantalla de login muestra "La aplicación aún no está configurada". Una vez creado el administrador, `/api/setup` responde 409: nadie puede reemplazarlo desde la app.
+
+Como el secreto JWT es aleatorio por arranque, **reiniciar el servidor cierra todas las sesiones abiertas** y hay que volver a iniciar sesión. Si se quiere que las sesiones sobrevivan a un reinicio, se puede fijar `APP_JWT_SECRET` con un texto largo y aleatorio propio de cada equipo. Al cambiar la contraseña, el secreto se renueva, de modo que se cierran las sesiones abiertas en otros navegadores.
+
+El paso a paso para el usuario está en la sección 11.1.
 
 ### 4.2 Rutas Dinámicas: pkg vs modo dev
 
@@ -214,6 +243,29 @@ const staticPath = path.join(__dirname, '../client/dist/client/browser');
 
 ### 4.3 API REST — Todos los Endpoints
 
+#### GET /api/setup/estado
+
+- **Acceso:** Público
+- **Respuesta:** `{ "configurado": bool, "puedeConfigurar": bool, "puedeCambiarPassword": bool }`. `puedeConfigurar` solo es `true` si no hay administrador **y** la petición viene del propio equipo. La usan el login (para mostrar el asistente), el historial (para redirigir al asistente en el primer uso) y el dashboard (para mostrar el botón de cambiar contraseña).
+
+#### POST /api/setup
+
+Crea el administrador en el primer uso y deja la sesión iniciada.
+
+- **Acceso:** Público, pero **solo desde el propio equipo** (403 desde otra IP) y **solo si aún no hay administrador** (409 si ya existe).
+- **Body:** `{ "usuario": "<usuario>", "password": "<mínimo 8 caracteres>" }` (400 si no cumple).
+- **Respuesta (200):** igual que `/api/login` (`{ token, usuario }`).
+
+#### POST /api/cambiar-password
+
+- **Acceso:** Requiere JWT.
+- **Body:** `{ "actual": "...", "nueva": "<mínimo 8 caracteres>" }`
+- **Respuestas:**
+  - 200 `{ token }`: token nuevo para esta sesión; se cierran las demás.
+  - 403: contraseña actual incorrecta. Se usa 403 y no 401 porque el interceptor del frontend cierra la sesión ante un 401.
+  - 400: la contraseña nueva no cumple el mínimo.
+  - 409: las credenciales vienen de `APP_USER`/`APP_PASS`.
+
 #### POST /api/login
 
 Autentica al usuario y devuelve un JWT válido por 8 horas.
@@ -222,6 +274,9 @@ Autentica al usuario y devuelve un JWT válido por 8 horas.
 - **Body:** `{ "usuario": "<usuario>", "password": "<contraseña>" }`
 - **Respuesta exitosa (200):** `{ "token": "eyJ...", "usuario": "Administrador" }`
 - **Respuesta fallida (401):** `{ "error": "Credenciales incorrectas" }`
+- **Bloqueo (429):** tras 5 intentos fallidos desde la misma IP, el login se bloquea durante 15 minutos, aunque luego se use la contraseña correcta.
+- **Sin administrador (503):** `{ error, sinConfigurar: true }`. La pantalla de login muestra entonces el asistente de primer uso.
+- La comparación de usuario y contraseña se hace en tiempo constante.
 - **Side effect:** Lanza `updateADGroups()` en background 2 segundos después del login exitoso, para mantener el caché AD actualizado sin bloquear la respuesta.
 
 #### GET /api/historial
@@ -322,7 +377,7 @@ Escaneo rápido para obtener la lista de usuarios en una ruta, sin el detalle co
 
 #### GET /api/addata
 
-- **Acceso:** Público
+- **Acceso:** Requiere JWT (contiene el directorio completo, incluidos los administradores del dominio)
 - **Respuesta:** Los dos mapas de Active Directory completos en memoria:
 
 ```json
@@ -338,39 +393,45 @@ Escaneo rápido para obtener la lista de usuarios en una ruta, sin el detalle co
 }
 ```
 
-#### POST /api/usergroups y POST /api/usergroups/public
+#### POST /api/usergroups
 
 Retorna los grupos AD de un usuario específico.
 
-- `usergroups` requiere JWT. `usergroups/public` es accesible sin autenticación.
+- **Acceso:** Requiere JWT. La antigua variante `/api/usergroups/public` se eliminó.
 - **Body:** `{ "usuario": "DOMINIO\\jperez" }` (acepta con o sin prefijo de dominio)
 - Extrae el SAM del nombre completo, lo normaliza a minúsculas, y busca en `AD_USER_GROUPS`.
 
-#### POST /api/groupusers y POST /api/groupusers/public
+#### POST /api/groupusers
 
 Retorna los usuarios miembros de un grupo AD.
 
-- Mismo patrón de acceso que los anteriores.
+- **Acceso:** Requiere JWT. La antigua variante `/api/groupusers/public` se eliminó.
 - **Body:** `{ "grupo": "Finanzas" }`
 
 ### 4.4 Motor de Escaneo PowerShell
 
-El corazón técnico del proyecto. Cuando llega una petición a `POST /api/scan`, el servidor construye un script PowerShell como string, lo lanza como proceso hijo y lee su salida.
+El corazón técnico del proyecto. Cuando llega una petición a `POST /api/scan`, el servidor lanza un script PowerShell como proceso hijo y lee su salida.
 
-**Inicialización del proceso:**
+**Regla de seguridad: los datos del usuario nunca van dentro del texto del script.** La ruta, la profundidad y los nombres a filtrar viajan como variables de entorno (`PS_RUTA`, `PS_PROFUNDIDAD`, `PS_NOMBRES`) y el script los lee con `$env:`. Cualquier script nuevo que reciba datos del navegador debe usar el mismo helper.
+
+**Inicialización del proceso (helper `spawnPS`):**
 
 ```javascript
-const ps = spawn(PS_PATH, [
-  '-NoProfile',        // No cargar perfil del usuario (mas rapido)
-  '-NonInteractive',   // Sin prompts interactivos
-  '-ExecutionPolicy', 'Bypass',  // Ignorar restricciones de ejecucion
-  '-Command', script   // El script como string directo
-], { timeout: 1800000 });
+function spawnPS(script, inputs, timeout) {
+  const env = { ...process.env };
+  for (const [k, v] of Object.entries(inputs || {})) env['PS_' + k] = String(v);
+  return spawn(PS_PATH, ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-Command', script], { timeout, env });
+}
 
-let stdout = '';
-ps.stdout.on('data', d => stdout += d.toString());
-ps.stderr.on('data', d => stderr += d.toString());
+const ps = spawnPS(script, { RUTA: ruta, PROFUNDIDAD: profMax, NOMBRES: nombres }, 1800000);
 ```
+
+```powershell
+$RutaScan = $env:PS_RUTA
+$ProfMax  = [int]$env:PS_PROFUNDIDAD
+```
+
+La profundidad se valida en Node antes de lanzar el proceso: debe ser un entero entre 0 y 20 (si no, responde 400).
 
 La variable `PS_PATH` apunta a `powershell.exe` o a la ruta completa si `SystemRoot` está definido. Esto garantiza encontrar PowerShell incluso en entornos con PATH no estándar.
 
@@ -441,18 +502,19 @@ Cuenta los separadores de ruta en la carpeta actual y le resta los de la ruta ra
 
 **El filtro dinámico de usuario:**
 
-Cuando se especifica `soloUsuario`, Node.js construye una condición PowerShell dinámica que incluye tanto al usuario como a todos sus grupos AD conocidos:
+Cuando se especifica `soloUsuario`, Node.js arma la lista de nombres a buscar (el usuario y todos sus grupos AD conocidos), uno por línea, y la pasa en `PS_NOMBRES`. El script se queda con las entradas de ACL cuyo nombre contiene alguno de ellos, sin distinguir mayúsculas:
 
-```javascript
-const namesToMatch = [soloUsuario, ...userGroups].map(n => n.replace(/'/g, "''"));
-const conditions = namesToMatch.map(n => `$usuarioStr -like '*${n}*'`).join(' -or ');
-userFilter = `if (-not (${conditions})) { continue }`;
-```
-
-Esto genera algo como:
 ```powershell
-if (-not ($usuarioStr -like '*jperez*' -or $usuarioStr -like '*Finanzas*' -or $usuarioStr -like '*Usuarios del dominio*')) { continue }
+$Nombres = @($env:PS_NOMBRES -split "`n" | Where-Object { $_ })
+# ... dentro del recorrido de cada entrada de la ACL:
+$coincide = $false
+foreach ($n in $Nombres) {
+  if ($usuarioStr.IndexOf($n, [System.StringComparison]::OrdinalIgnoreCase) -ge 0) { $coincide = $true; break }
+}
+if (-not $coincide) { continue }
 ```
+
+Es el mismo criterio que el antiguo `-like '*nombre*'`, pero sin interpretar `*`, `?` ni `[ ]` como comodines.
 
 **Resultado final del script PowerShell:**
 
@@ -537,42 +599,46 @@ Al iniciar el servidor:
 
 Al hacer login exitoso (2 segundos despues):
   4. Ejecuta updateADGroups() en background
-     -> Consulta LDAP del dominio actual
+     -> Consulta LDAP del dominio actual (timeout de 60 segundos)
      -> Si tiene datos: actualiza memoria + sobreescribe ad-groups.json
      -> Si no tiene datos: mantiene el cache anterior sin sobrescribir
 ```
 
 **El script PowerShell de actualización AD:**
 
+La búsqueda se hace por **usuarios** (no por grupos) y se leen los grupos de cada uno desde su atributo `memberOf`. El comentario del código lo justifica como más confiable que recorrer los miembros de cada grupo.
+
 ```powershell
 $domain = [System.DirectoryServices.ActiveDirectory.Domain]::GetCurrentDomain()
-$ldapRoot = 'LDAP://' + $domain.Name
-$searcher = New-Object System.DirectoryServices.DirectorySearcher([ADSI]$ldapRoot)
-$searcher.Filter = '(objectClass=group)'
+$root = [ADSI]('LDAP://' + $domain.Name)
+$searcher = New-Object System.DirectoryServices.DirectorySearcher($root)
+$searcher.Filter = '(&(objectClass=user)(objectCategory=person))'
 $searcher.PageSize = 1000
-$searcher.PropertiesToLoad.AddRange(@('name', 'member'))
-$groups = $searcher.FindAll()
+$searcher.PropertiesToLoad.AddRange(@('sAMAccountName','memberOf'))
+$users = $searcher.FindAll()
 ```
 
-Para cada grupo, itera sobre sus miembros y solo incluye los de tipo `user` (descarta grupos anidados). Extrae el `sAMAccountName` (nombre de login corto) de cada usuario.
+Para cada usuario toma su `sAMAccountName` en minúsculas y, por cada DN de `memberOf`, abre el grupo para leer su `sAMAccountName`. Si no puede, usa el `CN=` del DN. El resultado es `{ sam: [grupo1, grupo2, ...] }`.
 
-**Construcción de los mapas inversos:**
+**Construcción del mapa inverso:**
 
-El script PowerShell devuelve `{ GrupoNombre: [sam1, sam2, ...] }`. Node.js construye el inverso:
+Node.js recibe `AD_USER_GROUPS` (usuario → grupos) y construye `AD_GROUP_USERS` (grupo → usuarios):
 
 ```javascript
-const userGroups = {};
-for (const [gname, members] of Object.entries(groupUsers)) {
-  for (const sam of members) {
-    if (!userGroups[sam]) userGroups[sam] = [];
-    userGroups[sam].push(gname);
-  }
+const groupUsers = {};
+for (const [sam, groups] of Object.entries(userGroups)) {
+  groups.forEach(g => {
+    if (!groupUsers[g]) groupUsers[g] = [];
+    groupUsers[g].push(sam);
+  });
 }
 ```
 
+Si el grupo `Invitados del dominio` existía en el caché anterior y la nueva consulta no lo trae, se conserva.
+
 **Grupo "Usuarios del dominio":**
 
-Este grupo especial se reconstruye automáticamente incluyendo a todos los usuarios del dominio que aparecieron en cualquier grupo, ya que Active Directory raramente lista este grupo explícitamente en la propiedad `member` de cada usuario:
+Este grupo especial se reconstruye automáticamente con todos los usuarios devueltos por la consulta, porque es el grupo primario de las cuentas y Active Directory no lo incluye en `memberOf`:
 
 ```javascript
 const allDomainUsers = Object.keys(userGroups);
@@ -603,6 +669,20 @@ La sanitización reemplaza `:`, `/` y `\` por `_` y colapsa guiones bajos múlti
 - Todos los metadatos del escaneo (ruta, profundidad, usuario, timestamp).
 - El array completo de `PermissionRecord[]`.
 - NO contiene los índices calculados (`byUser`, `byFolder`) — estos se reconstruyen en el cliente cada vez que se carga un escaneo.
+
+La carpeta `Permisos_Scan/` está en `.gitignore`: los escaneos son datos del entorno (y contienen información interna del dominio), no código.
+
+### 4.8 Módulo Estructurador NAS
+
+El Estructurador NAS es un registro del mapa organizacional que el equipo de sistemas mantiene a mano. No lee ni modifica los escaneos de permisos; solo comparte con el resto de la app el login, el servidor y el empaquetado.
+
+- **Código:** `server/estructurador.js`, registrado desde `index.js` con `registerEstructuradorRoutes(app, authMiddleware)`.
+- **Endpoints:** todos bajo `/api/estructurador/*` y protegidos con JWT. Hay CRUD de Unidades, Áreas, Cargos, Procesos y Miembros, `GET /todo` para cargar todo de una vez, y dos rutas para importar personas de AD como Miembros (`GET /ad-usuarios` y `POST /miembros/importar-ad`).
+- **Datos:** `config/estructurador.json`. Si no existe, el servidor lo crea vacío al arrancar. Las escrituras se encolan en una cadena de promesas (`writeChain`) para que dos peticiones simultáneas no se pisen.
+- **Relación con AD:** solo **lee** `config/ad-groups.json` para ofrecer la importación de personas; nunca lo escribe.
+- **Integridad:** no deja borrar una Unidad, Área, Cargo o Proceso que tenga elementos dependientes (responde 409), y al borrar un Miembro limpia sus referencias en procesos y cargos.
+
+El modelo de datos, las reglas de numeración, todos los endpoints y la interfaz están documentados en [Estructurador NAS](./estructurador-nas.md).
 
 ---
 
@@ -662,6 +742,12 @@ provideRouter([
   { path: 'admin',
     loadComponent: () => import('./features/dashboard/dashboard.component')
       .then(m => m.DashboardComponent),
+    canActivate: [authGuard] },
+
+  // Estructurador NAS - PROTEGIDO por authGuard
+  { path: 'estructurador',
+    loadComponent: () => import('./features/estructurador/estructurador.component')
+      .then(m => m.EstructuradorComponent),
     canActivate: [authGuard] },
 
   // Cualquier ruta desconocida va al historial
@@ -972,15 +1058,15 @@ El caché se limpia en `ngOnChanges` cuando llega un nuevo `ScanResult`.
 
 **`HistorialComponent`:** Llama a `GET /api/historial` y lista los escaneos. Cada fila enlaza a `/ver/:filename`. No usa ni requiere `ScanService`.
 
-**`ViewerComponent`:** Lee el parámetro `:filename` de la URL, llama a `GET /api/historial/:filename`, procesa los datos con `ScanService.importScan()` y renderiza `ResultsComponent` en modo `readOnly=true`. En modo readOnly, `ResultsComponent` no muestra los botones de re-escaneo ni eliminación.
+**`ViewerComponent`:** Si hay sesión iniciada, primero carga los datos AD (`GET /api/addata`); sin sesión, se los salta y muestra el escaneo sin grupos. Lee el parámetro `:filename` de la URL, llama a `GET /api/historial/:filename`, procesa los datos con `ScanService.importScan()` y renderiza `ResultsComponent` en modo `readOnly=true`. En modo readOnly, `ResultsComponent` no muestra los botones de re-escaneo ni eliminación.
 
 ### 5.9 Componentes Compartidos (Shared)
 
 **`PermBadgeComponent`:** Muestra un badge de color según el tipo de permiso. El color se calcula en el template con lógica de clases condicionales Tailwind.
 
-**`GroupMembersComponent`:** Recibe un nombre de grupo y llama a `POST /api/groupusers/public` para obtener y mostrar sus miembros. Usa el endpoint público para funcionar tanto en el dashboard como en el viewer sin login.
+**`GroupMembersComponent`:** Recibe un nombre de grupo y llama a `POST /api/groupusers` para obtener y mostrar sus miembros. Si no hay sesión (visor público), no hace la petición y muestra "Inicia sesión para ver los miembros".
 
-**`UserGroupsComponent`:** Recibe un nombre de usuario y llama a `POST /api/usergroups/public` para obtener y mostrar los grupos a los que pertenece.
+**`UserGroupsComponent`:** Recibe un nombre de usuario y llama a `POST /api/usergroups` para mostrar los grupos a los que pertenece. Sin sesión muestra "Inicia sesión para ver los grupos".
 
 ### 5.10 Modelos de Datos TypeScript
 
@@ -1105,7 +1191,7 @@ interface HistorialItem {
     ResultsComponent.selectedUser.set('jperez')
     -> Accede a scan.byUser.get('jperez') -> instantaneo O(1)
     -> Muestra la lista de carpetas con acceso
-    -> Llama a POST /api/usergroups/public para mostrar grupos AD
+    -> Llama a POST /api/usergroups para mostrar grupos AD (requiere sesión)
 ```
 
 ### Carga desde historial (dashboard)
@@ -1143,7 +1229,7 @@ interface HistorialItem {
     Instala la herramienta pkg globalmente (solo primera vez)
 
 [2] cd server && npm install
-    Instala las dependencias del servidor (express, cors, jsonwebtoken)
+    Instala las dependencias del servidor (express, cors, jsonwebtoken, uuid)
 
 [3] cd client && npm install && npm run build
     Instala Angular CLI y dependencias
@@ -1157,7 +1243,7 @@ interface HistorialItem {
 
 [4] cd server && pkg . --target node18-win-x64 --output ../PermisosScan.exe
     pkg lee package.json para saber que empaquetar:
-      - El codigo de server/index.js y sus require()
+      - El codigo de server/index.js y sus require() (incluye estructurador.js)
       - Los assets: client/dist/client/browser/**/* (los archivos de Angular)
     Empaqueta todo en un binario de ~80-100 MB
 ```
@@ -1228,10 +1314,12 @@ En modo desarrollo con `npm start` esto es automático.
 ### Variables de entorno disponibles
 
 ```bash
-APP_USER=miusuario node index.js    # Cambiar usuario de login
-APP_PASS=mipassword node index.js   # Cambiar password de login
-SCAN_DIR=D:\mis-escaneos node index.js  # Cambiar directorio de escaneos
+APP_USER=miusuario APP_PASS=mipassword node index.js   # Credenciales (alternativa a config/credenciales.json)
+APP_JWT_SECRET=texto-largo-aleatorio node index.js     # Opcional: sesiones que sobreviven a reinicios
+SCAN_DIR=D:\mis-escaneos node index.js                 # Cambiar directorio de escaneos
 ```
+
+En desarrollo lo más cómodo es crear `config/credenciales.json` en la raíz del proyecto (junto a `server/` y `client/`). Sin credenciales, el login responde 503.
 
 ---
 
@@ -1370,12 +1458,22 @@ Cambiar `const PORT = 7890` en `server/index.js`. También actualizar:
 
 ## 10. Seguridad — Análisis y Recomendaciones
 
-La aplicación está pensada para uso en la red interna. Para cada instalación se recomienda:
+La aplicación está pensada para uso en la red interna.
 
-- **Credenciales propias:** definir `APP_USER` y `APP_PASS` por variables de entorno, con una contraseña robusta, y no usar los valores por defecto.
-- **Secreto de sesión propio:** usar un `JWT_SECRET` largo y aleatorio, distinto en cada instalación, cargado desde la configuración y no desde el código.
+### Medidas incluidas desde octubre 2026
+
+- **Sin credenciales en el código:** cada equipo crea su administrador con el asistente de primer uso, y la contraseña se guarda como hash (ver 4.1).
+- **Secreto de sesión aleatorio** en cada arranque, o propio de cada equipo con `APP_JWT_SECRET`.
+- **Datos de AD solo con sesión:** `/api/addata`, `/api/usergroups` y `/api/groupusers` exigen iniciar sesión.
+- **Límite de intentos:** el login se bloquea 15 minutos tras 5 fallos desde la misma IP.
+- **Datos del usuario fuera de los scripts de PowerShell:** viajan como variables de entorno (ver 4.4).
+
+**Versiones anteriores:** los `PermisosScan.exe` construidos antes de octubre de 2026 deben reemplazarse por uno nuevo (`CONSTRUIR_EXE.bat`), y se debe crear una contraseña nueva, distinta de la anterior.
+
+### Recomendaciones para cada instalación
+
 - **Acceso restringido:** permitir el acceso al puerto de la aplicación solo desde los equipos autorizados del área de Sistemas.
-- **Rutas sin sesión:** revisar periódicamente qué consultas pueden hacerse sin iniciar sesión, porque los escaneos y los datos de grupos de AD son información interna.
+- **Consultas sin sesión:** el historial y el visor no piden sesión para poder compartir resultados. Si no se comparten con personas sin cuenta, conviene protegerlos también, porque los escaneos son información interna.
 - **HTTPS:** si se accede desde otros equipos de la red, publicarla detrás de un proxy inverso con HTTPS.
 - **Tiempo máximo de escaneo:** en redes pequeñas, reducirlo a 5–10 minutos para no dejar procesos de PowerShell corriendo demasiado tiempo.
 
@@ -1386,6 +1484,25 @@ Los detalles de seguridad propios de cada instalación se mantienen en la docume
 ## 11. Manual de Usuario
 
 ### 11.1 Inicio Rápido
+
+#### La primera vez en cada equipo: crear el administrador
+
+La aplicación no trae usuario ni contraseña incluidos. La primera vez, ella misma pide crearlos:
+
+1. Arranca la aplicación (`ABRIR.bat` o `EJECUTAR.bat`) **en el equipo donde está instalada**.
+2. Se abre sola la pantalla **"Configurar administrador"**. Elige usuario y contraseña (mínimo 8 caracteres), repítela y pulsa **Crear administrador**.
+3. Entras directo al panel. Desde ese momento, esas son las credenciales de inicio de sesión.
+
+- Desde **otro equipo** de la red no se puede crear el administrador: la pantalla avisa "La aplicación aún no está configurada" y pide hacerlo en el equipo donde está instalada.
+- Solo se crea **una vez**; después la pantalla desaparece.
+- Usa una contraseña nueva, distinta de la que se usaba antes.
+- Si el equipo usaba un `PermisosScan.exe` construido antes de octubre 2026, reemplázalo por uno nuevo (`CONSTRUIR_EXE.bat`) y borra las copias viejas. Es el único paso manual, y se hace una sola vez.
+
+**Cambiar la contraseña:** en el panel, botón con ícono de llave junto a "Cerrar sesión". Pide la contraseña actual y la nueva dos veces.
+
+**Olvidé la contraseña:** cierra la aplicación, borra `config/credenciales.json` (junto al `.exe`, o en `permisos-scan/config/` si usas el código fuente) y vuelve a abrirla en ese equipo. Reaparece "Configurar administrador".
+
+#### Arrancar la aplicación
 
 La forma más simple de iniciar la aplicación:
 
@@ -1411,9 +1528,9 @@ Al hacer clic en cualquier escaneo se abre el **Visor** en modo de solo lectura,
 
 Para realizar nuevos escaneos, eliminar escaneos del historial, o re-escanear rutas existentes, es necesario hacer login.
 
-Desde el historial, haz clic en el botón **"Administrador"** (o ve directamente a `/login`).
+Desde el historial, haz clic en el botón **"Iniciar sesión"** (o ve directamente a `/login`).
 
-- **Usuario y contraseña:** los configurados en la instalación. Solicítelos al área de Sistemas.
+- **Usuario y contraseña:** los entrega el equipo de sistemas. No se publican en esta documentación.
 
 La sesión es válida por **8 horas**. Al cerrar la pestaña o el navegador, la sesión se cierra y hay que volver a hacer login.
 
@@ -1476,15 +1593,29 @@ Cualquier escaneo guardado tiene una URL pública de la forma:
 http://localhost:7890/ver/nombre-del-escaneo.json
 ```
 
-Esta URL se puede compartir con personas que necesitan consultar los resultados pero no realizar nuevos escaneos. El visor no requiere login y tiene las mismas capacidades de exploración que el dashboard, pero sin los botones de re-escaneo o eliminación.
+Esta URL se puede compartir con personas que necesitan consultar los resultados pero no realizar nuevos escaneos. El visor no requiere login y tiene las mismas capacidades de exploración que el dashboard, pero sin los botones de re-escaneo o eliminación. **Sin sesión no muestra los grupos ni los miembros de AD** ("Inicia sesión para ver los grupos"); si quien lo abre ya inició sesión en ese navegador, sí los ve.
 
 ### 11.7 Exportar Resultados
 
-Desde el dashboard (con sesión activa), el escaneo activo se puede exportar en dos formatos:
+**Estado actual (octubre 2026): la interfaz no tiene botón de exportar.** `ScanService` tiene `exportJSON()` y `exportCSV()`, y `ResultsComponent` declara las salidas `exportJSON`/`exportCSV` que el dashboard escucha, pero ningún botón las emite, así que el usuario no puede usarlas.
 
-**JSON:** Exporta todos los datos del escaneo. Útil para archivado o para importar en otra sesión de la aplicación.
+Mientras tanto, para sacar los datos:
+- **JSON completo:** copiar el archivo desde `Permisos_Scan/`.
+- **Para Excel:** abrir ese JSON con Excel (Datos → Obtener datos → Desde archivo → JSON).
 
-**CSV:** Exporta como tabla compatible con Excel. Cada fila es un registro de permiso con las columnas: carpeta, nivel, usuario, usuarioCorto, tipo, acceso, heredado.
+Si se conecta el botón, `exportCSV` genera una fila por registro con las columnas: carpeta, nivel, usuario, usuarioCorto, tipo, acceso, heredado.
+
+### 11.8 Estructurador NAS
+
+Desde el dashboard, el botón **Estructurador** del encabezado abre `/estructurador` (requiere sesión iniciada).
+
+1. **Elige la Unidad** en el selector de arriba (por ejemplo, el NAS principal o una unidad de OneDrive). Con `+` creas una nueva.
+2. **Navega por columnas:** al hacer clic en un Área aparecen sus Cargos y Procesos; al hacer clic en un Cargo, los Procesos de los que es dueño; al hacer clic en un Proceso, su detalle (descripción, dueño o encargado, participantes). Un Proceso suelto puede tener Subprocesos.
+3. **Crea elementos** con el botón `+` de cada columna, que pregunta qué tipo de elemento quieres agregar.
+4. **Gestiona personas** con el botón global junto a la búsqueda → **Miembro**. Ahí puedes crear, editar o eliminar Miembros, o usar **Importar de AD** para traer personas reales del directorio. Las personas importadas quedan sin cargo hasta que se les asigna uno.
+5. **Busca** con la barra superior: resalta las coincidencias por nombre o código en todas las columnas.
+
+Si al eliminar algo aparece un aviso de que tiene elementos asociados, primero hay que reasignar o eliminar esos elementos.
 
 ---
 
@@ -1506,11 +1637,23 @@ La actualización de grupos AD requiere que el equipo esté en un dominio de Act
 El ejecutable tardó más de 30 segundos en iniciar. Puede ser que Windows Defender esté analizando el nuevo ejecutable (primera ejecución). Esperar un momento y volver a ejecutar. Si persiste, comprobar si hay un firewall bloqueando el puerto 7890.
 
 **La sesión se cerró sola:**
-El token JWT expira a las 8 horas. También se pierde al cerrar el navegador o la pestaña (se almacena en sessionStorage, no en localStorage). Volver a hacer login.
+El token JWT expira a las 8 horas. También se pierde al cerrar el navegador o la pestaña (se almacena en sessionStorage, no en localStorage) y **cada vez que se reinicia el servidor** (el secreto de sesión cambia en cada arranque). Volver a hacer login.
+
+**"La aplicación aún no está configurada":**
+Todavía no se creó el administrador y la página se abrió desde otro equipo. Abrir `http://localhost:7890/login` en el equipo donde está instalada la aplicación y crear el administrador (sección 11.1).
+
+**"La contraseña actual no es correcta" al cambiar la contraseña:**
+La contraseña actual escrita no coincide. La sesión sigue abierta; volver a intentarlo. Si no la recuerdas, sigue "Olvidé la contraseña" en la sección 11.1.
+
+**"Demasiados intentos fallidos":**
+Hubo 5 intentos fallidos de login desde ese equipo. Esperar 15 minutos o reiniciar el servidor.
+
+**El visor no muestra grupos de AD:**
+Es lo esperado sin sesión. Iniciar sesión en ese mismo navegador y recargar el visor.
 
 **Un escaneo viejo ya no aparece en el historial:**
 Si alguien eliminó el archivo `.json` de la carpeta `Permisos_Scan/` manualmente, ya no aparece. El historial refleja exactamente los archivos presentes en esa carpeta.
 
 ---
 
-*PermisosScan v2.0 — Documentación técnica generada en Mayo 2026*
+*PermisosScan v2.0 — Documentación técnica generada en Mayo 2026, actualizada en Octubre 2026 (Estructurador NAS, integración AD por `memberOf`, archivos ignorados por git, correcciones de seguridad, asistente de primer uso y cambio de contraseña desde la app).*

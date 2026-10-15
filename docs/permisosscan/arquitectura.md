@@ -11,7 +11,7 @@
 
 **Backend (`server/`)**
 - Node.js (target de empaquetado `node18-win-x64`; el Node instalado en este entorno es `v24.18.0`, no verificado cuál usa el usuario final en producción).
-- Express `4.22.1` (declarado `^4.18.2`), `cors 2.8.6`, `jsonwebtoken 9.0.3`.
+- Express `4.22.1` (declarado `^4.18.2`), `cors 2.8.6`, `jsonwebtoken 9.0.3`, `uuid ^11.0.5` (IDs del Estructurador NAS).
 - Sin ORM ni base de datos: persistencia 100% en archivos JSON en disco (ver sección Backend).
 
 **Empaquetador**
@@ -30,27 +30,31 @@ permisos-scan/
 ├── client/                        Frontend Angular (SPA)
 │   ├── src/app/
 │   │   ├── core/                  Servicios, guards e interceptor transversales
-│   │   ├── features/              Páginas/rutas (login, dashboard, historial, viewer)
+│   │   ├── features/              Páginas/rutas (login, dashboard, historial, viewer, estructurador)
 │   │   └── shared/                Componentes reutilizables entre features
 │   ├── src/assets/                Estáticos servidos tal cual
 │   ├── angular.json, tailwind.config.js, tsconfig.json, proxy.conf.json
-│   └── dist/                      (build) — ignorado
+│   └── dist/                      (build) — ignorado por git; lo generan EJECUTAR.bat y CONSTRUIR_EXE.bat
 ├── server/                        Backend Node/Express
-│   ├── index.js                   Único archivo con toda la API y lógica de scan
+│   ├── index.js                   API del lector de permisos, login, AD y lógica de scan
 │   ├── estructurador.js           Módulo aislado del Estructurador NAS (registrado desde index.js)
 │   ├── ad-groups.js               Datos AD hardcodeados de fallback (snapshot manual)
 │   └── package.json               Deps + config de `pkg`
 ├── config/                        Config persistida en runtime
 │   ├── ad-groups.json             Cache de grupos AD generada por el server (sobreescribe el fallback)
-│   └── estructurador.json         Datos del Estructurador NAS (Unidades/Áreas/Cargos/Procesos/Miembros)
-├── Permisos_Scan/                 Resultados de escaneos guardados como .json (uno por escaneo)
+│   └── estructurador.json         Datos del Estructurador NAS (ignorado por git; se crea solo si no existe)
+├── Permisos_Scan/                 Resultados de escaneos guardados como .json (uno por escaneo; ignorados por git)
 ├── setup/
 │   └── instalar-node.ps1          Instalador automático de Node.js para el .bat
 ├── ABRIR.bat                      Lanza PermisosScan.exe (uso final, sin código fuente)
 ├── EJECUTAR.bat                   Lanza desde código fuente (instala deps/compila si falta)
 ├── CONSTRUIR_EXE.bat              Compila Angular + empaqueta con pkg → PermisosScan.exe
-├── PermisosScan.exe               Ejecutable generado (binario)
-└── README.md
+├── PermisosScan.exe               Ejecutable generado (binario, ignorado por git)
+├── README.md                      Qué es la app, por qué existe y para qué sirve
+├── GUIA_DE_USO.md                 Guía de uso y operación (instalación, pantallas, mantenimiento, problemas)
+├── ARQUITECTURA_ACTUAL.md         Este documento
+├── CONTEXTO_ESTRUCTURADOR_NAS_v2.md  Referencia del módulo Estructurador NAS
+└── PermisosScan_Documentacion.pdf Versión PDF de ../PermisosScan_Documentacion.md (regenerada en octubre 2026)
 ```
 
 **Nivel 2 relevante dentro de `client/src/app/`:**
@@ -80,13 +84,16 @@ shared/
 
 ## Backend
 
-**Framework:** Express 4, un único archivo `server/index.js` (494 líneas) sin capas ni routers separados — todo el registro de rutas y lógica vive ahí.
+**Framework:** Express 4, un único archivo `server/index.js` (496 líneas) para el lector de permisos, más `server/estructurador.js` (557 líneas) para el Estructurador NAS; sin capas ni routers separados — todo el registro de rutas y lógica vive ahí.
 
 **Endpoints REST existentes** (todos bajo `/api`, salvo el catch-all de SPA):
 
 | Método | Ruta | Auth | Descripción |
 |---|---|---|---|
-| POST | `/api/login` | No | Valida usuario/contraseña fijos, devuelve JWT (expira en 8h) y dispara actualización de grupos AD en background |
+| POST | `/api/login` | No | Valida las credenciales configuradas en el equipo (`APP_USER`/`APP_PASS` o `config/credenciales.json`), devuelve JWT (expira en 8h) y dispara actualización de grupos AD en background. Bloquea 15 min tras 5 fallos por IP (429); sin administrador responde 503 |
+| GET | `/api/setup/estado` | No | Indica si ya hay administrador y si esta petición puede crearlo (solo desde el propio equipo) |
+| POST | `/api/setup` | No (solo `localhost`) | Asistente de primer uso: crea el administrador en `config/credenciales.json` (hash scrypt). 403 desde otra IP, 409 si ya existe |
+| POST | `/api/cambiar-password` | Sí | Cambia la contraseña (pide la actual) y renueva el secreto JWT, cerrando las demás sesiones |
 | GET | `/api/historial` | No | Lista archivos `.json` en `SCAN_DIR` con tamaño, fecha y label |
 | GET | `/api/historial/:filename` | No | Devuelve el contenido completo de un escaneo guardado |
 | DELETE | `/api/historial/:filename` | Sí | Elimina un archivo de escaneo guardado |
@@ -94,11 +101,9 @@ shared/
 | GET | `/api/drives` | Sí | Lista unidades de red/locales vía PowerShell (`Get-PSDrive`) |
 | POST | `/api/scan` | Sí | Ejecuta el escaneo de ACLs (PowerShell `Get-Acl` recursivo), guarda el resultado como JSON y lo devuelve |
 | POST | `/api/quickscan` | Sí | Escaneo rápido (profundidad fija 3) solo para listar usuarios con acceso a una ruta, usado por el autocomplete del modal |
-| GET | `/api/addata` | No | Devuelve `AD_USER_GROUPS` y `AD_GROUP_USERS` completos en memoria |
+| GET | `/api/addata` | Sí | Devuelve `AD_USER_GROUPS` y `AD_GROUP_USERS` completos en memoria |
 | POST | `/api/usergroups` | Sí | Grupos AD de un usuario (`sAMAccountName`) |
-| POST | `/api/usergroups/public` | No | Igual que arriba, versión pública (usada por el viewer de solo lectura) |
 | POST | `/api/groupusers` | Sí | Miembros de un grupo AD |
-| POST | `/api/groupusers/public` | No | Igual que arriba, versión pública |
 | * | `/api/estructurador/*` | Sí | Módulo Estructurador NAS (Unidades/Áreas/Cargos/Procesos/Miembros), registrado desde `server/estructurador.js`. Endpoints detallados en [Estructurador NAS](./estructurador-nas.md) |
 | GET | `*` | No | Sirve `index.html` del build de Angular (catch-all de SPA) |
 
@@ -133,7 +138,7 @@ shared/
 - **`config/estructurador.json`**: datos propios del módulo Estructurador NAS (Unidades, Áreas, Cargos, Procesos, Miembros). Completamente aislado de los dos archivos anteriores. Ver [Estructurador NAS](./estructurador-nas.md) para el esquema completo.
 
 **Integraciones externas:**
-- **PowerShell:** no hay librería wrapper; se usa `child_process.spawn(PS_PATH, ['-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-Command', script], { timeout })` directamente, con `PS_PATH` resuelto a `%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe`. Los scripts se arman como strings de PowerShell interpolados con template literals de JS (con escape manual de comillas simples y backslashes para los valores de usuario). Se usa en: `/api/drives`, `/api/scan`, `/api/quickscan`, `runPS` (helper genérico) y `updateADGroups`. La salida se parsea limpiando caracteres de control y extrayendo la última línea que empieza con `{` o `[` antes de `JSON.parse`.
+- **PowerShell:** no hay librería wrapper; se usa `child_process.spawn(PS_PATH, ['-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-Command', script], { timeout })` directamente, con `PS_PATH` resuelto a `%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe`. Los scripts se arman como texto dentro de JS, y los valores que vienen del usuario se pasan como variables de entorno con el helper `spawnPS` (ver "Riesgos y deuda técnica visible"). Se usa en: `/api/drives`, `/api/scan`, `/api/quickscan`, `runPS` (helper genérico) y `updateADGroups`. La salida se parsea limpiando caracteres de control y extrayendo la última línea que empieza con `{` o `[` antes de `JSON.parse`.
 - **LDAP/Active Directory:** también vía PowerShell (no hay librería Node de LDAP). El script inyectado en `updateADGroups()` usa `[System.DirectoryServices.ActiveDirectory.Domain]::GetCurrentDomain()` y `[ADSI]`/`DirectorySearcher` para recorrer usuarios (`objectClass=user`) y su atributo `memberOf`, reconstruyendo en el servidor los mapas usuario↔grupo. Se ejecuta automáticamente 2 segundos después de cada login exitoso.
 
 ## Frontend
@@ -181,8 +186,11 @@ shared/
 
 ## Riesgos y deuda técnica visible
 
-- **Seguridad:** hay mejoras de seguridad identificadas en la configuración de credenciales y en el manejo de las entradas que llegan a PowerShell. El detalle se mantiene en la documentación interna del área de Sistemas. Ver también las recomendaciones de la [documentación técnica](./documentacion.md).
-- **Sin base de datos ni bloqueo de escritura:** el "almacenamiento" son archivos JSON sueltos en `Permisos_Scan/` y `config/ad-groups.json`, sin locks — dos requests concurrentes de escaneo/actualización AD podrían pisarse escrituras (`fs.writeFileSync`).
+- **Versiones del `.exe` anteriores a octubre 2026:** deben reemplazarse por un `.exe` nuevo y crear una contraseña nueva. El código actual ya no contiene credenciales (se crean por equipo con el asistente de primer uso en `config/credenciales.json` con hash scrypt, o con `APP_USER`/`APP_PASS`; el secreto JWT es aleatorio por arranque o se fija con `APP_JWT_SECRET`).
+- **Scripts de PowerShell armados como texto:** los datos del navegador viajan como variables de entorno `PS_*` mediante el helper `spawnPS` de `server/index.js`, pero el resto de cada script sigue siendo un texto grande dentro de JS. Cualquier script nuevo que reciba datos del usuario debe usar `spawnPS` y nunca insertarlos en el texto del script.
+- **Sin base de datos ni bloqueo de escritura en el lector de permisos:** el "almacenamiento" son archivos JSON sueltos en `Permisos_Scan/` y `config/ad-groups.json`, sin locks — dos requests concurrentes de escaneo/actualización AD podrían pisarse escrituras (`fs.writeFileSync`). El Estructurador NAS sí serializa sus escrituras (`writeChain`).
+- **`config/ad-groups.json` versionado en git pero reescrito en cada login:** la sincronización con AD lo regenera completo, así que cada login deja cambios pendientes en git. En una prueba de octubre 2026 la sincronización devolvió bastantes menos usuarios que la versión guardada; no se investigó si es normal o si la consulta LDAP está trayendo menos de lo esperado.
+- **Endurecimiento de red pendiente:** hay recomendaciones abiertas sobre el acceso de red al servidor y sobre qué consultas pueden hacerse sin sesión. Ver la sección de seguridad de la [documentación técnica](./documentacion.md); el detalle está en la documentación interna del área de Sistemas.
 - **`ScanService.getADGroupUsers()` y `getADUserGroups()`** (`scan.service.ts:365-374`) están sin implementar — devuelven `[]` siempre pese a ser llamados desde `ResultsComponent` (`isGroup`, `getGroupMembers`, `getUserGroupNames`); es código muerto/incompleto que puede confundir a quien lo extienda.
 - **Duplicación de lógica de escaneo:** `/api/scan` y `/api/quickscan` en `server/index.js` tienen scripts PowerShell casi idénticos (recorrido de ACLs) con profundidad y campos distintos, sin factorizar.
 - **Duplicación de paletas de color** entre `PermBadgeComponent`, `FolderTreeComponent` y `ResultsComponent` (cada uno define su propio mapa `tipo → clases Tailwind`) — cambiar un color de permiso requiere tocar varios archivos.
